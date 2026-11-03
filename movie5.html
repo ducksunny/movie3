@@ -25,26 +25,42 @@
             cursor: grab;
             border-radius: 4px;
             overflow: hidden;
-            background-color: #2e7d32; /* 이미지 없을 때 배경색 */
+            background-color: #2e7d32;
             color: white;
             display: flex;
-            align-items: center;
-            justify-content: center;
+            flex-direction: column;
+            justify-content: flex-end;
             text-align: center;
             font-size: 0.7rem;
             position: relative;
         }
 
         .movie-card img {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
-            position: absolute;
-            top: 0;
-            left: 0;
+            z-index: 1;
+        }
+
+        .movie-card .movie-title {
+            position: relative;
+            z-index: 2;
+            background: rgba(0, 0, 0, 0.55);
+            padding: 4px 2px;
+            line-height: 1.2;
+            font-size: 0.62rem;
+            font-weight: 700;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .candidate-pool { width: 95%; max-width: 800px; min-height: 150px; background: #c8e6c9; border-radius: 12px; padding: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .tier-content.drop-target, #pool.drop-target { outline: 3px dashed #2e7d32; outline-offset: 4px; }
+        .movie-card.dragging { opacity: 0.7; transform: scale(1.02); }
     </style>
 </head>
 <body>
@@ -59,37 +75,113 @@
     </div>
 
     <div class="candidate-pool" id="pool" ondrop="drop(event)" ondragover="allowDrop(event)">
-        <!-- 이미지 주소를 좀 더 안정적인 Unsplash 샘플로 교체했습니다. -->
         <div class="movie-card" id="movie-1" draggable="true" ondragstart="drag(event)">
-            기생충<img src="https://images.unsplash.com/photo-1594909122845-11baa439b7bf?w=200" alt="기생충">
+            <img src="https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=400&q=80" alt="기생충">
+            <span class="movie-title">기생충</span>
         </div>
         <div class="movie-card" id="movie-2" draggable="true" ondragstart="drag(event)">
-            인셉션<img src="https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=200" alt="인셉션">
+            <img src="https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=400&q=80" alt="라라랜드">
+            <span class="movie-title">라라랜드</span>
         </div>
         <div class="movie-card" id="movie-3" draggable="true" ondragstart="drag(event)">
-            어바웃타임<img src="https://images.unsplash.com/photo-1524712245354-2c4e5e7121c0?w=200" alt="어바웃타임">
+            <img src="https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=400&q=80" alt="스파이더맨">
+            <span class="movie-title">스파이더맨</span>
         </div>
         <div class="movie-card" id="movie-4" draggable="true" ondragstart="drag(event)">
-            토이스토리<img src="https://images.unsplash.com/photo-1558655146-d09347e92766?w=200" alt="토이스토리">
+            <img src="https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=400&q=80" alt="겨울왕국">
+            <span class="movie-title">겨울왕국</span>
         </div>
         <div class="movie-card" id="movie-5" draggable="true" ondragstart="drag(event)">
-            아바타<img src="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=200" alt="아바타">
+            <img src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=400&q=80" alt="아바타">
+            <span class="movie-title">아바타</span>
         </div>
     </div>
 
     <script>
+        let draggedCard = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
         function allowDrop(ev) { ev.preventDefault(); }
-        function drag(ev) { ev.dataTransfer.setData("text", ev.target.id); }
+        function drag(ev) {
+            const card = ev.target.closest ? ev.target.closest('.movie-card') : ev.target.parentElement;
+            if (card) {
+                ev.dataTransfer.setData('text', card.id);
+            }
+        }
         function drop(ev) {
             ev.preventDefault();
-            const data = ev.dataTransfer.getData("text");
+            const data = ev.dataTransfer.getData('text');
+            if (!data) return;
             const draggedElement = document.getElementById(data);
             let target = ev.target;
             while (target && !target.classList.contains('tier-content') && target.id !== 'pool') {
                 target = target.parentElement;
             }
-            if (target) { target.appendChild(draggedElement); saveData(); }
+            if (target && draggedElement) { target.appendChild(draggedElement); saveData(); }
         }
+
+        function attachPointerDrag(card) {
+            card.addEventListener('pointerdown', (event) => {
+                if (event.button !== 0) return;
+                draggedCard = card;
+                const rect = card.getBoundingClientRect();
+                dragOffsetX = event.clientX - rect.left;
+                dragOffsetY = event.clientY - rect.top;
+
+                card.classList.add('dragging');
+                card.setPointerCapture(event.pointerId);
+                card.style.position = 'fixed';
+                card.style.left = rect.left + 'px';
+                card.style.top = rect.top + 'px';
+                card.style.width = rect.width + 'px';
+                card.style.height = rect.height + 'px';
+                card.style.zIndex = 1000;
+                card.style.pointerEvents = 'none';
+            });
+
+            card.addEventListener('pointermove', (event) => {
+                if (!draggedCard || draggedCard !== card) return;
+                card.style.left = event.clientX - dragOffsetX + 'px';
+                card.style.top = event.clientY - dragOffsetY + 'px';
+
+                const hoverTarget = document.elementFromPoint(event.clientX, event.clientY);
+                document.querySelectorAll('.tier-content, #pool').forEach(zone => zone.classList.remove('drop-target'));
+                if (hoverTarget) {
+                    const zone = hoverTarget.closest('.tier-content, #pool');
+                    if (zone) zone.classList.add('drop-target');
+                }
+            });
+
+            function finishPointerDrag(event) {
+                if (!draggedCard || draggedCard !== card) return;
+                const hoverTarget = document.elementFromPoint(event.clientX, event.clientY);
+                const zone = hoverTarget ? hoverTarget.closest('.tier-content, #pool') : null;
+                if (zone) {
+                    zone.appendChild(card);
+                    saveData();
+                }
+
+                card.style.position = '';
+                card.style.left = '';
+                card.style.top = '';
+                card.style.width = '';
+                card.style.height = '';
+                card.style.zIndex = '';
+                card.style.pointerEvents = '';
+                card.classList.remove('dragging');
+                document.querySelectorAll('.tier-content, #pool').forEach(zone => zone.classList.remove('drop-target'));
+                draggedCard = null;
+            }
+
+            card.addEventListener('pointerup', finishPointerDrag);
+            card.addEventListener('pointercancel', finishPointerDrag);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.movie-card').forEach(attachPointerDrag);
+        });
+
         function saveData() {
             const positions = {};
             document.querySelectorAll('.movie-card').forEach(movie => {
