@@ -1,1 +1,115 @@
 # movie3
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>숲속의 영화 정리함</title>
+    <style>
+        body { background-color: #e8f5e9; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        h1 { color: #2e7d32; }
+
+        .tier-board { width: 95%; max-width: 800px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .tier-row { display: flex; min-height: 120px; border-bottom: 1px solid #eee; }
+        .tier-label { width: 80px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.5rem; color: white; }
+        
+        .s-tier { background-color: #ffd700; }
+        .a-tier { background-color: #ff8c00; }
+        .b-tier { background-color: #4fc3f7; }
+        .c-tier { background-color: #b0bec5; }
+
+        .tier-content { flex-grow: 1; display: flex; flex-wrap: wrap; padding: 10px; gap: 10px; background-color: #fafafa; min-width: 200px; }
+
+        /* 영화 카드 스타일 보강 */
+        .movie-card {
+            width: 80px;
+            height: 110px;
+            cursor: grab;
+            border-radius: 4px;
+            overflow: hidden;
+            background-color: #2e7d32; /* 이미지 없을 때 배경색 */
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 0.7rem;
+            position: relative;
+        }
+
+        .movie-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .candidate-pool { width: 95%; max-width: 800px; min-height: 150px; background: #c8e6c9; border-radius: 12px; padding: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+
+    <h1>🌿 숲속의 영화 정리함</h1>
+
+    <div class="tier-board">
+        <div class="tier-row"><div class="tier-label s-tier">S</div><div class="tier-content" id="tier-S" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+        <div class="tier-row"><div class="tier-label a-tier">A</div><div class="tier-content" id="tier-A" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+        <div class="tier-row"><div class="tier-label b-tier">B</div><div class="tier-content" id="tier-B" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+        <div class="tier-row"><div class="tier-label c-tier">C</div><div class="tier-content" id="tier-C" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+    </div>
+
+    <div class="candidate-pool" id="pool" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <!-- 이미지 주소를 좀 더 안정적인 Unsplash 샘플로 교체했습니다. -->
+        <div class="movie-card" id="movie-1" draggable="true" ondragstart="drag(event)">
+            기생충<img src="https://images.unsplash.com/photo-1594909122845-11baa439b7bf?w=200" alt="기생충">
+        </div>
+        <div class="movie-card" id="movie-2" draggable="true" ondragstart="drag(event)">
+            인셉션<img src="https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=200" alt="인셉션">
+        </div>
+        <div class="movie-card" id="movie-3" draggable="true" ondragstart="drag(event)">
+            어바웃타임<img src="https://images.unsplash.com/photo-1524712245354-2c4e5e7121c0?w=200" alt="어바웃타임">
+        </div>
+        <div class="movie-card" id="movie-4" draggable="true" ondragstart="drag(event)">
+            토이스토리<img src="https://images.unsplash.com/photo-1558655146-d09347e92766?w=200" alt="토이스토리">
+        </div>
+        <div class="movie-card" id="movie-5" draggable="true" ondragstart="drag(event)">
+            아바타<img src="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=200" alt="아바타">
+        </div>
+    </div>
+
+    <script>
+        function allowDrop(ev) { ev.preventDefault(); }
+        function drag(ev) { ev.dataTransfer.setData("text", ev.target.id); }
+        function drop(ev) {
+            ev.preventDefault();
+            const data = ev.dataTransfer.getData("text");
+            const draggedElement = document.getElementById(data);
+            let target = ev.target;
+            while (target && !target.classList.contains('tier-content') && target.id !== 'pool') {
+                target = target.parentElement;
+            }
+            if (target) { target.appendChild(draggedElement); saveData(); }
+        }
+        function saveData() {
+            const positions = {};
+            document.querySelectorAll('.movie-card').forEach(movie => {
+                positions[movie.id] = movie.parentElement.id;
+            });
+            localStorage.setItem('movieTierDataV3', JSON.stringify(positions));
+        }
+        function loadData() {
+            const savedData = localStorage.getItem('movieTierDataV3');
+            if (savedData) {
+                const positions = JSON.parse(savedData);
+                for (const [movieId, parentId] of Object.entries(positions)) {
+                    const movie = document.getElementById(movieId);
+                    const parent = document.getElementById(parentId);
+                    if (movie && parent) parent.appendChild(movie);
+                }
+            }
+        }
+        window.onload = loadData;
+    </script>
+</body>
+</html>
