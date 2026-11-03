@@ -1,0 +1,227 @@
+# 숲속의 영화 정리함
+
+이 문서는 영화 티어 정리 웹페이지를 Markdown 형식으로 저장한 버전입니다.
+
+## 영화 목록
+- 기생충
+- 라라랜드
+- 스파이더맨
+- 겨울왕국
+- 아바타
+
+## 페이지 설명
+- S, A, B, C 티어로 영화를 정리할 수 있음
+- 카드 드래그로 티어 이동 가능
+- 브라우저를 새로고침해도 위치가 유지됨
+- 각 영화 카드에 이미지와 제목이 함께 표시됨
+
+## HTML 원본
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>숲속의 영화 정리함</title>
+    <style>
+        body { background-color: #e8f5e9; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        h1 { color: #2e7d32; }
+
+        .tier-board { width: 95%; max-width: 800px; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .tier-row { display: flex; min-height: 120px; border-bottom: 1px solid #eee; }
+        .tier-label { width: 80px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.5rem; color: white; }
+
+        .s-tier { background-color: #ffd700; }
+        .a-tier { background-color: #ff8c00; }
+        .b-tier { background-color: #4fc3f7; }
+        .c-tier { background-color: #b0bec5; }
+
+        .tier-content { flex-grow: 1; display: flex; flex-wrap: wrap; padding: 10px; gap: 10px; background-color: #fafafa; min-width: 200px; }
+
+        .movie-card {
+            width: 80px;
+            height: 110px;
+            cursor: grab;
+            border-radius: 4px;
+            overflow: hidden;
+            background-color: #2e7d32;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            text-align: center;
+            font-size: 0.7rem;
+            position: relative;
+        }
+
+        .movie-card img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        .movie-card .movie-title {
+            position: relative;
+            z-index: 2;
+            background: rgba(0, 0, 0, 0.55);
+            padding: 4px 2px;
+            line-height: 1.2;
+            font-size: 0.62rem;
+            font-weight: 700;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .candidate-pool { width: 95%; max-width: 800px; min-height: 150px; background: #c8e6c9; border-radius: 12px; padding: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .tier-content.drop-target, #pool.drop-target { outline: 3px dashed #2e7d32; outline-offset: 4px; }
+        .movie-card.dragging { opacity: 0.7; transform: scale(1.02); }
+    </style>
+</head>
+<body>
+    <h1>🌿 숲속의 영화 정리함</h1>
+
+    <div class="tier-board">
+        <div class="tier-row"><div class="tier-label s-tier">S</div><div class="tier-content" id="tier-S" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+        <div class="tier-row"><div class="tier-label a-tier">A</div><div class="tier-content" id="tier-A" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+        <div class="tier-row"><div class="tier-label b-tier">B</div><div class="tier-content" id="tier-B" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+        <div class="tier-row"><div class="tier-label c-tier">C</div><div class="tier-content" id="tier-C" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+    </div>
+
+    <div class="candidate-pool" id="pool" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <div class="movie-card" id="movie-1" draggable="true" ondragstart="drag(event)">
+            <img src="https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?auto=format&fit=crop&w=400&q=80" alt="기생충">
+            <span class="movie-title">기생충</span>
+        </div>
+        <div class="movie-card" id="movie-2" draggable="true" ondragstart="drag(event)">
+            <img src="https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=400&q=80" alt="라라랜드">
+            <span class="movie-title">라라랜드</span>
+        </div>
+        <div class="movie-card" id="movie-3" draggable="true" ondragstart="drag(event)">
+            <img src="https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=400&q=80" alt="스파이더맨">
+            <span class="movie-title">스파이더맨</span>
+        </div>
+        <div class="movie-card" id="movie-4" draggable="true" ondragstart="drag(event)">
+            <img src="https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=400&q=80" alt="겨울왕국">
+            <span class="movie-title">겨울왕국</span>
+        </div>
+        <div class="movie-card" id="movie-5" draggable="true" ondragstart="drag(event)">
+            <img src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=400&q=80" alt="아바타">
+            <span class="movie-title">아바타</span>
+        </div>
+    </div>
+
+    <script>
+        let draggedCard = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        function allowDrop(ev) { ev.preventDefault(); }
+        function drag(ev) {
+            const card = ev.target.closest ? ev.target.closest('.movie-card') : ev.target.parentElement;
+            if (card) {
+                ev.dataTransfer.setData('text', card.id);
+            }
+        }
+        function drop(ev) {
+            ev.preventDefault();
+            const data = ev.dataTransfer.getData('text');
+            if (!data) return;
+            const draggedElement = document.getElementById(data);
+            let target = ev.target;
+            while (target && !target.classList.contains('tier-content') && target.id !== 'pool') {
+                target = target.parentElement;
+            }
+            if (target && draggedElement) { target.appendChild(draggedElement); saveData(); }
+        }
+
+        function attachPointerDrag(card) {
+            card.addEventListener('pointerdown', (event) => {
+                if (event.button !== 0) return;
+                draggedCard = card;
+                const rect = card.getBoundingClientRect();
+                dragOffsetX = event.clientX - rect.left;
+                dragOffsetY = event.clientY - rect.top;
+
+                card.classList.add('dragging');
+                card.setPointerCapture(event.pointerId);
+                card.style.position = 'fixed';
+                card.style.left = rect.left + 'px';
+                card.style.top = rect.top + 'px';
+                card.style.width = rect.width + 'px';
+                card.style.height = rect.height + 'px';
+                card.style.zIndex = 1000;
+                card.style.pointerEvents = 'none';
+            });
+
+            card.addEventListener('pointermove', (event) => {
+                if (!draggedCard || draggedCard !== card) return;
+                card.style.left = event.clientX - dragOffsetX + 'px';
+                card.style.top = event.clientY - dragOffsetY + 'px';
+
+                const hoverTarget = document.elementFromPoint(event.clientX, event.clientY);
+                document.querySelectorAll('.tier-content, #pool').forEach(zone => zone.classList.remove('drop-target'));
+                if (hoverTarget) {
+                    const zone = hoverTarget.closest('.tier-content, #pool');
+                    if (zone) zone.classList.add('drop-target');
+                }
+            });
+
+            function finishPointerDrag(event) {
+                if (!draggedCard || draggedCard !== card) return;
+                const hoverTarget = document.elementFromPoint(event.clientX, event.clientY);
+                const zone = hoverTarget ? hoverTarget.closest('.tier-content, #pool') : null;
+                if (zone) {
+                    zone.appendChild(card);
+                    saveData();
+                }
+
+                card.style.position = '';
+                card.style.left = '';
+                card.style.top = '';
+                card.style.width = '';
+                card.style.height = '';
+                card.style.zIndex = '';
+                card.style.pointerEvents = '';
+                card.classList.remove('dragging');
+                document.querySelectorAll('.tier-content, #pool').forEach(zone => zone.classList.remove('drop-target'));
+                draggedCard = null;
+            }
+
+            card.addEventListener('pointerup', finishPointerDrag);
+            card.addEventListener('pointercancel', finishPointerDrag);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.movie-card').forEach(attachPointerDrag);
+        });
+
+        function saveData() {
+            const positions = {};
+            document.querySelectorAll('.movie-card').forEach(movie => {
+                positions[movie.id] = movie.parentElement.id;
+            });
+            localStorage.setItem('movieTierDataV3', JSON.stringify(positions));
+        }
+        function loadData() {
+            const savedData = localStorage.getItem('movieTierDataV3');
+            if (savedData) {
+                const positions = JSON.parse(savedData);
+                for (const [movieId, parentId] of Object.entries(positions)) {
+                    const movie = document.getElementById(movieId);
+                    const parent = document.getElementById(parentId);
+                    if (movie && parent) parent.appendChild(movie);
+                }
+            }
+        }
+        window.onload = loadData;
+    </script>
+</body>
+</html>
+```
+
+## 요약
+이 페이지는 빠르게 영화 취향을 정리하고 시각적으로 나열하는 데 사용합니다.
