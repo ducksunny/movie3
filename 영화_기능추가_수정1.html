@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>내 영화 티어리스트 (이미지 버전)</title>
+  <style>
+    :root { --paper:#faf8f3; --ink:#242922; --muted:#5f685d; --line:#d9dad1; --green:#276453; --sage:#e3eee7; --peach:#f2e6dc; --red:#c0392b; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--paper); font-family:system-ui,-apple-system,sans-serif; line-height:1.6;  }
+    main { width:min(100% - 32px,860px); margin:32px auto 48px; }
+    header { display:flex; align-items:start; justify-content:space-between; gap:20px; flex-wrap:wrap; }
+    h1 { margin:0; font-size:clamp(26px,5vw,34px); line-height:1.25; letter-spacing:-.03em; }
+    .sub { margin:10px 0 0; color:var(--muted); max-width:46ch; }
+    
+    /* 입력 도구 레이아웃 수정 */
+    .tools { display:flex; flex-wrap:wrap; gap:8px; width:100%; margin-top:20px; }
+    .tools input { min-width:0; flex:1 1 160px; border:1.5px solid var(--line); border-radius:12px; padding:11px 12px; font:inherit; }
+    .tools button { padding:10px 15px; border:1px solid var(--green); border-radius:12px; font-weight:700; background:var(--green); color:#fff; cursor:pointer; }
+    .tools .reset { color:var(--green); background:#fff; }
+    
+    #message { min-height:26px; margin:14px 0; font-size:14px; color:var(--muted); }
+    .tiers { display:grid; gap:10px; }
+    .row { display:flex; min-height:120px; background:#fff; border:1.5px solid var(--line); border-radius:14px; overflow:hidden; }
+    .row.over { outline:3px solid var(--green); outline-offset:1px; }
+    
+    .label { width:80px; flex-shrink:0; border:0; color:white; font-size:18px; font-weight:800; padding:12px 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+    .label span { font-size:26px; }
+    .label small { font-size:12px; opacity:0.9; font-weight:400; }
+    .S .label { background:#a55239; } .A .label { background:#b4763e; } .B .label { background:#276453; } .C .label { background:#67725d; }
+    
+    .drop { flex:1; min-width:0; display:flex; flex-wrap:wrap; align-content:flex-start; gap:10px; padding:12px; min-height:118px; }
+    .pool { margin-top:22px; }
+    .pool-head { margin:0 0 8px; border:0; padding:0; background:transparent; color:var(--muted); font-size:17px; font-weight:700; text-align:left; cursor:pointer; }
+    #pool { border:1.5px dashed var(--line); border-radius:14px; background:#fff; }
+    
+    /* 영화 카드 스타일 (이미지 지원) */
+    .card { 
+      position:relative; width:100px; height:140px; border-radius:8px; 
+      font-size:12px; font-weight:700; color:white; cursor:grab; 
+      overflow:hidden; border:1px solid var(--line);
+      background-size: cover; background-position: center;
+      display: flex; align-items: flex-end; padding: 0;
+    }
+    .card[aria-pressed="true"] { outline:3px solid var(--green); outline-offset:2px; }
+    
+    /* 카드 내부 제목 텍스트 보호막 */
+    .card-title {
+      width: 100%; padding: 20px 6px 6px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.8));
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+      pointer-events: none;
+    }
+
+    /* 삭제 버튼 */
+    .del-btn { 
+      position:absolute; top:4px; right:4px; width:20px; height:20px; 
+      border-radius:50%; border:none; background:rgba(0,0,0,0.5); 
+      color:white; font-size:14px; display:flex; align-items:center; 
+      justify-content:center; padding:0; cursor:pointer; z-index: 10;
+    }
+    .del-btn:hover { background:var(--red); }
+
+    .note { font-size:13px; color:var(--muted); margin-top:18px; }
+    @media(max-width:420px) { .label { width:60px; } .card { width:80px; height:112px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header><div><h1>내 영화 티어리스트</h1><p class="sub">영화를 추가하고 드래그하거나 클릭해서 등급을 매겨보세요.</p></div></header>
+    
+    <form class="tools" id="add-form">
+      <input id="title" placeholder="영화 제목" maxlength="80">
+      <input id="imgUrl" placeholder="이미지 주소(선택)" title="이미지 URL을 입력하세요">
+      <button type="submit">추가</button>
+      <button type="button" class="reset" id="reset">초음으로</button>
+    </form>
+
+    <p id="message" role="status">영화를 선택해 S·A·B·C로 나누어 보세요.</p>
+    
+    <section class="tiers" id="tiers" aria-label="영화 등급"></section>
+    
+    <section class="pool" aria-label="아직 안 정한 영화">
+      <button class="pool-head" id="pool-label" type="button">아직 안 정한 영화 (0)</button>
+      <div class="drop" id="pool" data-tier="pool"></div>
+    </section>
+    
+    <p class="note">팁: 구글 이미지에서 영화 포스터를 검색한 뒤, 이미지 위에서 '이미지 주소 복사'를 눌러 붙여넣으세요.</p>
+  </main>
+
+  <script>
+    const KEY = "movie-tier-v3";
+    const LEVELS = ['S', 'A', 'B', 'C', 'pool'];
+    const COLORS = ["#f2e6dc","#e3eee7","#ede7f6","#fcefd9","#e2ecf4","#f6e3e3"];
+    
+    // 초기 샘플 데이터 (이미지 포함)
+    const initial = () => ({ 
+      nextId: 4, 
+      items: [
+        { id: 'm1', title: '기생충', tier: 'pool', img: 'https://search.pstatic.net/common/?src=http%3A%2F%2Fblogfiles.naver.net%2FMjAyMDAyMTBfMTU1%2FMDAxNTgxMjk4OTU0ODU3.H6_7zXG8X9X9_v0_v0_v0.JPEG.sksmsdlfma%2F1.jpg&type=sc960_832' },
+        { id: 'm2', title: '인터스텔라', tier: 'pool', img: 'https://search.pstatic.net/common/?src=http%3A%2F%2Fblogfiles.naver.net%2FMjAyMTAzMTFfMTU0%2FMDAxNjE1NDI3NTk5ODU0.G4_7zXG8X9X9_v0_v0_v0.JPEG.sksmsdlfma%2F2.jpg&type=sc960_832' },
+        { id: 'm3', title: '라라랜드', tier: 'pool', img: 'https://search.pstatic.net/common/?src=http%3A%2F%2Fblogfiles.naver.net%2FMjAyMDAyMTBfMTU1%2FMDAxNTgxMjk4OTU0ODU3.H6_7zXG8X9X9_v0_v0_v0.JPEG.sksmsdlfma%2F3.jpg&type=sc960_832' }
+      ] 
+    });
+
+    let state = initial();
+    let selected = null;
+
+    // 로컬 스토리지 불러오기
+    try {
+      const stored = JSON.parse(localStorage.getItem(KEY));
+      if (stored) state = stored;
+    } catch {}
+
+    function showMessage(msg) { document.querySelector('#message').textContent = msg; }
+    function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+    function move(id, tier) {
+      const item = state.items.find(i => i.id === id);
+      if (!item) return;
+      item.tier = tier; selected = null; save(); render();
+      showMessage(`'${item.title}' 영화를 옮겼어요.`);
+    }
+
+    function remove(id) {
+      const item = state.items.find(i => i.id === id);
+      if (item && confirm(`'${item.title}'을(를) 삭제할까요?`)) {
+        state.items = state.items.filter(i => i.id !== id);
+        if (selected === id) selected = null;
+        save(); render();
+        showMessage('삭제되었습니다.');
+      }
+    }
+
+    function card(item, index) {
+      const el = document.createElement('button');
+      el.className = 'card'; el.draggable = true;
+      el.setAttribute('aria-pressed', String(selected === item.id));
+      
+      // 이미지 설정 (없으면 배경색)
+      if (item.img) {
+        el.style.backgroundImage = `url('${item.img}')`;
+      } else {
+        el.style.backgroundColor = COLORS[index % COLORS.length];
+        el.style.color = 'var(--ink)';
+      }
+
+      // 제목 레이어
+      const titleLayer = document.createElement('div');
+      titleLayer.className = 'card-title';
+      titleLayer.textContent = item.title;
+      el.appendChild(titleLayer);
+
+      // 삭제 버튼
+      const delBtn = document.createElement('button');
+      delBtn.className = 'del-btn'; delBtn.innerHTML = '&times;';
+      delBtn.onclick = (e) => { e.stopPropagation(); remove(item.id); };
+      el.appendChild(delBtn);
+
+      el.onclick = () => {
+        selected = selected === item.id ? null : item.id;
+        render();
+        showMessage(selected ? `'${item.title}' 선택됨` : '선택 해제');
+      };
+
+      el.ondragstart = (e) => e.dataTransfer.setData('text/plain', item.id);
+      return el;
+    }
+
+    function wireDrop(el, tier) {
+      el.ondragover = (e) => { e.preventDefault(); el.closest('.row')?.classList.add('over'); };
+      el.ondragleave = () => el.closest('.row')?.classList.remove('over');
+      el.ondrop = (e) => { e.preventDefault(); move(e.dataTransfer.getData('text/plain'), tier); };
+      el.onclick = () => { if (selected) move(selected, tier); };
+    }
+
+    function render() {
+      const tiers = document.querySelector('#tiers'); tiers.replaceChildren();
+      
+      LEVELS.filter(l => l !== 'pool').forEach(tier => {
+        const row = document.createElement('div'); row.className = 'row ' + tier;
+        const count = state.items.filter(i => i.tier === tier).length;
+        
+        const label = document.createElement('button');
+        label.className = 'label';
+        label.innerHTML = `<span>${tier}</span><small>${count}개</small>`;
+        label.onclick = () => { if (selected) move(selected, tier); };
+        
+        const drop = document.createElement('div'); drop.className = 'drop';
+        state.items.filter(i => i.tier === tier).forEach((item, idx) => drop.append(card(item, idx)));
+        
+        wireDrop(drop, tier); row.append(label, drop); tiers.append(row);
+      });
+
+      const pool = document.querySelector('#pool'); pool.replaceChildren();
+      const poolItems = state.items.filter(i => i.tier === 'pool');
+      poolItems.forEach((item, idx) => pool.append(card(item, idx)));
+      document.querySelector('#pool-label').textContent = `아직 안 정한 영화 (${poolItems.length})`;
+      wireDrop(pool, 'pool');
+    }
+
+    document.querySelector('#add-form').onsubmit = (e) => {
+      e.preventDefault();
+      const tInput = document.querySelector('#title');
+      const iInput = document.querySelector('#imgUrl');
+      const title = tInput.value.trim();
+      const img = iInput.value.trim();
+
+      if (!title) return showMessage('제목을 입력하세요!');
+      
+      state.items.push({ id: 'm' + state.nextId++, title, img, tier: 'pool' });
+      save(); render();
+      tInput.value = ''; iInput.value = ''; tInput.focus();
+      showMessage('추가되었습니다!');
+    };
+
+    document.querySelector('#reset').onclick = () => {
+      if (confirm('모든 데이터를 초기화할까요?')) {
+        state = initial(); save(); render();
+      }
+    };
+
+    render();
+  </script>
+</body>
+</html>
